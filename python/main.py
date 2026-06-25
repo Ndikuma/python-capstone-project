@@ -6,24 +6,24 @@ import time
 RPC_URL = "http://alice:password@127.0.0.1:18443"
 
 def create_or_load_wallet(client, wallet_name):
-    """Create or load a wallet if it doesn't exist or isn't loaded."""
-    try:
-        # Try to load the wallet
-        client.loadwallet(wallet_name)
-        print(f"Wallet '{wallet_name}' loaded successfully.")
-        return AuthServiceProxy(f"{RPC_URL}/wallet/{wallet_name}")
-    except JSONRPCException as e:
-        if "Wallet file not found" in str(e):
-            # Wallet doesn't exist, create it
-            client.createwallet(wallet_name)
-            print(f"Wallet '{wallet_name}' created successfully.")
-            return AuthServiceProxy(f"{RPC_URL}/wallet/{wallet_name}")
-        elif "Already loaded" in str(e):
-            # Wallet is already loaded
-            print(f"Wallet '{wallet_name}' already loaded.")
-            return AuthServiceProxy(f"{RPC_URL}/wallet/{wallet_name}")
+    # Check if wallet exists
+    wallets = client.listwalletdir()["wallets"]
+    wallet_exists = any(w["name"] == wallet_name for w in wallets)
+
+    if not wallet_exists:
+        print(f"Creating wallet '{wallet_name}'...")
+        client.createwallet(wallet_name)
+    else:
+        # Load only if not already loaded
+        loaded_wallets = client.listwallets()
+
+        if wallet_name not in loaded_wallets:
+            print(f"Loading wallet '{wallet_name}'...")
+            client.loadwallet(wallet_name)
         else:
-            raise e
+            print(f"Wallet '{wallet_name}' already loaded.")
+
+    return AuthServiceProxy(f"{RPC_URL}/wallet/{wallet_name}")
 
 def main():
     try:
